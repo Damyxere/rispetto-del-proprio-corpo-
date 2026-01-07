@@ -175,6 +175,7 @@ const auth=getAuth(app);
 const avatar=document.getElementById("avatar");
 const menu=document.getElementById("menu");
 let email=null;
+let lang="it";
 
 function menuHTML(){
  return email ? `
@@ -193,9 +194,10 @@ function menuHTML(){
 function settings(){
  return `
   <label>Lingua</label>
-  <select><option>IT</option><option>EN</option></select>
-  <label>Tema</label>
-  <select><option>Scuro</option><option>Chiaro</option></select>
+  <select onchange="setLang(this.value)">
+   <option value="it">IT</option>
+   <option value="en">EN</option>
+  </select>
  `;
 }
 
@@ -218,27 +220,91 @@ window.logout = ()=>signOut(auth);
 
 /* DOMANDE */
 let questions=[
- {q:"Quante volte fai attività fisica a settimana?",a:["Mai","1-2 volte","3-4 volte","Quasi ogni giorno"]},
- {q:"Preferisci muoverti o stare seduto nel tempo libero?",a:["Seduto","Dipende","Muovermi"]},
- {q:"Come ti senti dopo aver fatto sport?",a:["Stanco","Normale","Energico","Felice"]},
- {q:"Usi lo sport per scaricare lo stress?",a:["Mai","A volte","Spesso"]},
- {q:"Pensi che il movimento faccia bene alla mente?",a:["No","Un po'","Sì"]},
- {q:"Ti piace fare sport?",a:["No","A volte","Sì"]},
- {q:"Quanto è importante rispettare il proprio corpo?",a:["Poco","Abbastanza","Molto"]}
+ {
+  it:"Quante volte fai attività fisica a settimana?",
+  en:"How many times do you do physical activity per week?",
+  a:{
+   it:["Mai","1-2 volte","3-4 volte","Quasi ogni giorno"],
+   en:["Never","1-2 times","3-4 times","Almost every day"]
+  }
+ },
+ {
+  it:"Preferisci muoverti o stare seduto nel tempo libero?",
+  en:"Do you prefer moving or sitting in your free time?",
+  a:{
+   it:["Seduto","Dipende","Muovermi"],
+   en:["Sitting","It depends","Moving"]
+  }
+ },
+ {
+  it:"Come ti senti dopo aver fatto sport?",
+  en:"How do you feel after exercising?",
+  a:{
+   it:["Stanco","Normale","Energico","Felice"],
+   en:["Tired","Normal","Energized","Happy"]
+  }
+ },
+ {
+  it:"Usi lo sport per scaricare lo stress?",
+  en:"Do you use sport to relieve stress?",
+  a:{
+   it:["Mai","A volte","Spesso"],
+   en:["Never","Sometimes","Often"]
+  }
+ },
+ {
+  it:"Pensi che il movimento faccia bene alla mente?",
+  en:"Do you think movement is good for the mind?",
+  a:{
+   it:["No","Un po'","Sì"],
+   en:["No","A little","Yes"]
+  }
+ },
+ {
+  it:"Ti piace fare sport?",
+  en:"Do you like doing sports?",
+  a:{
+   it:["No","A volte","Sì"],
+   en:["No","Sometimes","Yes"]
+  }
+ },
+ {
+  it:"Quanto è importante rispettare il proprio corpo?",
+  en:"How important is it to respect your body?",
+  a:{
+   it:["Poco","Abbastanza","Molto"],
+   en:["Not much","Quite","Very much"]
+  }
+ }
 ];
 
-questions = questions.sort(()=>Math.random()-0.5);
-
 const qDiv=document.getElementById("questions");
-questions.forEach((obj,i)=>{
- qDiv.innerHTML+=`
- <div style="margin:25px 0">
-  <p><strong>${i+1}. ${obj.q}</strong></p>
-  ${obj.a.map(a=>`
-   <label><input type="radio" name="q${i}" value="${a}"> ${a}</label>
-  `).join("")}
- </div>`;
-});
+
+function renderQuestions(){
+ qDiv.innerHTML="";
+ const shuffled=[...questions].sort(()=>Math.random()-0.5);
+ window.currentQuestions=shuffled;
+
+ shuffled.forEach((obj,i)=>{
+  qDiv.innerHTML+=`
+   <div style="margin:25px 0">
+    <p><strong>${i+1}. ${obj[lang]}</strong></p>
+    ${obj.a[lang].map(a=>`
+     <label>
+      <input type="radio" name="q${i}" value="${a}" required> ${a}
+     </label>
+    `).join("")}
+   </div>
+  `;
+ });
+}
+
+renderQuestions();
+
+window.setLang=l=>{
+ lang=l;
+ renderQuestions();
+};
 
 /* INVIO */
 document.getElementById("survey").addEventListener("submit",async e=>{
@@ -248,18 +314,21 @@ document.getElementById("survey").addEventListener("submit",async e=>{
  if(!name) return alert("Inserisci il nome");
 
  let answers={};
- for(let i=0;i<questions.length;i++){
+
+ for(let i=0;i<window.currentQuestions.length;i++){
+  const q=window.currentQuestions[i];
   const c=document.querySelector(`input[name="q${i}"]:checked`);
   if(!c) return alert("Rispondi a tutte le domande");
-  answers[questions[i].q]=c.value;
+  answers[q[lang]]=c.value;
  }
 
  await addDoc(collection(db,"sondaggi"),{
-  nome: name,
-  email: email || null,
-  risposte: answers,
-  stato: "pending",
-  data: serverTimestamp()
+  nome:name,
+  email:email||null,
+  lingua:lang,
+  risposte:answers,
+  stato:"pending",
+  data:serverTimestamp()
  });
 
  alert("Sondaggio inviato correttamente");
